@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connections Helper</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Inter font from Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Custom styles for the application */
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-touch-callout: none; /* iOS Safari */
+            -webkit-user-select: none; /* Safari */
+            -khtml-user-select: none; /* Konqueror HTML */
+            -moz-user-select: none; /* Old versions of Firefox */
+            -ms-user-select: none; /* Internet Explorer/Edge */
+            user-select: none; /* Non-prefixed version, currently supported by Chrome, Edge, Opera and Firefox */
+        }
+        
+        /* Style for the draggable word tiles */
+        .word-tile {
+            cursor: grab;
+            transition: all 0.2s ease-in-out;
+            touch-action: none; /* Recommended for draggable elements */
+        }
+        
+        /* Style for a word tile while it is being dragged */
+        .word-tile.dragging {
+            cursor: grabbing;
+            opacity: 0.5;
+            transform: scale(1.05);
+        }
+
+        /* Style for the drop zones (pots and word bank) */
+        .drop-zone {
+            transition: background-color 0.2s ease, border-color 0.2s ease;
+            min-height: 100px; /* Ensure drop zones have a minimum height */
+        }
+        
+        /* Visual feedback for when a dragged item is over a valid drop zone */
+        .drop-zone.drag-over {
+            background-color: #e0f2fe; /* A light blue background */
+            border-color: #38bdf8; /* A brighter blue border */
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800">
+
+    <div class="container mx-auto p-4 md:p-8">
+        
+        <!-- Header Section -->
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-slate-900">Connections Helper</h1>
+            <p class="text-slate-600 mt-2">Enter your words, then drag and drop them into groups.</p>
+        </header>
+
+        <!-- Configuration Section -->
+        <div class="bg-white p-6 rounded-2xl shadow-md mb-8 max-w-4xl mx-auto">
+            <h2 class="text-xl font-semibold mb-4">Setup</h2>
+            <div class="grid md:grid-cols-3 gap-6">
+                <!-- Word Input Area -->
+                <div class="md:col-span-2">
+                    <label for="word-input" class="block text-sm font-medium text-slate-700 mb-2">Enter words (one per line):</label>
+                    <textarea id="word-input" rows="8" class="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition" placeholder="Word 1&#10;Word 2&#10;Word 3&#10;..."></textarea>
+                </div>
+                <!-- Settings and Controls -->
+                <div>
+                    <label for="pot-count" class="block text-sm font-medium text-slate-700 mb-2">Number of Groups:</label>
+                    <input type="number" id="pot-count" value="4" min="1" max="10" class="w-full p-3 border border-slate-300 rounded-lg mb-4 focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition">
+                    <button id="load-words-btn" class="w-full bg-sky-600 text-white font-semibold py-3 px-4 rounded-lg hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 transition duration-150">
+                        Load Words & Setup Groups
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content: Word Bank and Pots -->
+        <main class="max-w-7xl mx-auto">
+            <!-- Word Bank for ungrouped words -->
+            <div class="mb-8">
+                <h3 class="text-lg font-semibold mb-3 text-slate-700">Word Bank</h3>
+                <div id="word-bank" class="drop-zone bg-white p-4 rounded-2xl shadow-sm border-2 border-dashed border-slate-300 min-h-[120px] flex flex-wrap gap-3 items-start">
+                    <!-- Draggable word tiles will be generated here -->
+                </div>
+            </div>
+
+            <!-- Pots for grouping words -->
+            <div>
+                <h3 class="text-lg font-semibold mb-3 text-slate-700">Groups</h3>
+                <div id="pots-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <!-- Drop zone pots will be generated here -->
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- DOM Element References ---
+            const loadWordsBtn = document.getElementById('load-words-btn');
+            const wordInput = document.getElementById('word-input');
+            const potCountInput = document.getElementById('pot-count');
+            const wordBank = document.getElementById('word-bank');
+            const potsContainer = document.getElementById('pots-container');
+
+            let wordIdCounter = 0; // To give each word a unique ID
+
+            // --- Function to Setup/Reset the Board ---
+            const setupBoard = () => {
+                // 1. Clear existing words and pots
+                wordBank.innerHTML = '';
+                potsContainer.innerHTML = '';
+                potsContainer.className = 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6'; // Reset grid classes
+
+                // 2. Get words from textarea, filter out empty lines, and trim whitespace
+                const words = wordInput.value.split('\n')
+                    .map(word => word.trim())
+                    .filter(word => word.length > 0);
+
+                // 3. Create and add word tiles to the word bank
+                words.forEach(word => {
+                    const tile = document.createElement('div');
+                    tile.id = `word-${wordIdCounter++}`;
+                    tile.className = 'word-tile bg-slate-200 text-slate-800 font-medium py-2 px-4 rounded-lg shadow-sm';
+                    tile.draggable = true;
+                    tile.textContent = word;
+                    wordBank.appendChild(tile);
+                });
+
+                // 4. Create the specified number of pots
+                const potCount = parseInt(potCountInput.value, 10);
+                
+                // Adjust tailwind grid columns based on pot count for better layout
+                if (potCount === 3) potsContainer.classList.replace('lg:grid-cols-4', 'lg:grid-cols-3');
+                if (potCount > 4) potsContainer.classList.replace('lg:grid-cols-4', `lg:grid-cols-${Math.min(potCount, 5)}`);
+
+                for (let i = 1; i <= potCount; i++) {
+                    const potWrapper = document.createElement('div');
+                    potWrapper.className = 'bg-white p-4 rounded-2xl shadow-sm';
+                    
+                    const potHeader = document.createElement('h4');
+                    potHeader.className = 'font-semibold text-slate-900 mb-3';
+                    potHeader.textContent = `Group ${i}`;
+
+                    const pot = document.createElement('div');
+                    pot.id = `pot-${i}`;
+                    pot.className = 'drop-zone border-2 border-dashed border-slate-300 rounded-lg p-3 flex flex-wrap gap-3 items-start';
+
+                    potWrapper.appendChild(potHeader);
+                    potWrapper.appendChild(pot);
+                    potsContainer.appendChild(potWrapper);
+                }
+
+                // 5. Add event listeners to all new elements
+                addDragAndDropListeners();
+            };
+
+            // --- Function to Add All Drag & Drop Event Listeners ---
+            const addDragAndDropListeners = () => {
+                const wordTiles = document.querySelectorAll('.word-tile');
+                const dropZones = document.querySelectorAll('.drop-zone');
+
+                // Add drag listeners to each word tile
+                wordTiles.forEach(tile => {
+                    tile.addEventListener('dragstart', (e) => {
+                        tile.classList.add('dragging');
+                        // Set data to transfer: the ID of the dragged element
+                        e.dataTransfer.setData('text/plain', tile.id);
+                    });
+
+                    tile.addEventListener('dragend', () => {
+                        tile.classList.remove('dragging');
+                    });
+                });
+
+                // Add listeners to each drop zone (pots and word bank)
+                dropZones.forEach(zone => {
+                    zone.addEventListener('dragover', (e) => {
+                        e.preventDefault(); // Necessary to allow dropping
+                        zone.classList.add('drag-over');
+                    });
+
+                    zone.addEventListener('dragleave', () => {
+                        zone.classList.remove('drag-over');
+                    });
+
+                    zone.addEventListener('drop', (e) => {
+                        e.preventDefault();
+                        zone.classList.remove('drag-over');
+
+                        // Get the ID of the dragged element
+                        const id = e.dataTransfer.getData('text/plain');
+                        const draggableElement = document.getElementById(id);
+                        
+                        // Append the dragged element to the new parent (the drop zone)
+                        if(draggableElement) {
+                           zone.appendChild(draggableElement);
+                        }
+                    });
+                });
+            };
+
+            // --- Initial Setup and Event Binding ---
+            loadWordsBtn.addEventListener('click', setupBoard);
+            
+            // Populate with some default words to demonstrate functionality
+            wordInput.value = "Apple\nBanana\nCarrot\nBroccoli\nChair\nTable\nSofa\nBed\nLion\nTiger\nBear\nElephant\nSun\nMoon\nStar\nPlanet";
+            
+            // Perform initial setup on page load
+            setupBoard();
+        });
+    </script>
+</body>
+</html>
